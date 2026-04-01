@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>The Lorenz Flux - v9.5 Stability Build</title>
+    <title>The Lorenz Flux - v10 Final Stability</title>
     <style>
         body { margin: 0; background: #000; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
         
@@ -63,10 +63,10 @@
 
 <div id="mobileNav">
     <div class="dpad">
-        <div style="grid-column: 2"><button class="nav-btn" onpointerdown="startMove(0, -8)" onpointerup="stopMove()">↑</button></div>
-        <button class="nav-btn" onpointerdown="startMove(-8, 0)" onpointerup="stopMove()">←</button>
-        <button class="nav-btn" onpointerdown="startMove(0, 8)" onpointerup="stopMove()">↓</button>
-        <button class="nav-btn" onpointerdown="startMove(8, 0)" onpointerup="stopMove()">→</button>
+        <div style="grid-column: 2"><button class="nav-btn" onpointerdown="startMove(0, -10)" onpointerup="stopMove()">↑</button></div>
+        <button class="nav-btn" onpointerdown="startMove(-10, 0)" onpointerup="stopMove()">←</button>
+        <button class="nav-btn" onpointerdown="startMove(0, 10)" onpointerup="stopMove()">↓</button>
+        <button class="nav-btn" onpointerdown="startMove(10, 0)" onpointerup="stopMove()">→</button>
     </div>
     <div style="display: flex; gap: 4px;">
         <button class="nav-btn" onpointerdown="startZoom(1.03)" onpointerup="stopZoom()">+</button>
@@ -93,16 +93,14 @@ const dcv = document.getElementById('diagCanvas'), dctx = dcv.getContext('2d');
 let W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
 let sigma = 10, rho = 28, beta = 2.67;
 let actors = [], activeCount = 1, masterSpeed = 12, camSpeed = 10;
-
-// FIXED: Panning and Rotation variables initialized for central focus
-let rotationX = 0.8, rotationY = 0.4, panX = 0, panY = 0, zoom = 1.0, autoTimer = 0;
-let isAuto = false, isDragging = false, isPanning = false, lastX, lastY, moveInterval, zoomInterval;
-let vField = false, vBlueMode = false, vHeads = true, showSlice = false, poincarePoints = [], divergenceData = [];
+let rotationX = 0, rotationY = 0, panX = 0, panY = 0, zoom = 1.0, autoTimer = 0;
+let isAuto = false, isDragging = false, isPanning = false, moveInterval, zoomInterval, divergenceData = [];
+let vField = false, vBlueMode = false, vHeads = true, showSlice = false, poincarePoints = [];
 
 const colors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600'];
 const blueShades = ['#00d2ff', '#0078ff', '#3d5afe'];
 
-function startMove(x, y) { moveInterval = setInterval(() => { panX += x / dpr; panY += y / dpr; }, 16); }
+function startMove(x, y) { moveInterval = setInterval(() => { panX += x; panY += y; }, 16); }
 function stopMove() { clearInterval(moveInterval); }
 function startZoom(f) { zoomInterval = setInterval(() => { zoom *= f; }, 16); }
 function stopZoom() { clearInterval(zoomInterval); }
@@ -120,7 +118,7 @@ function initUI() {
 }
 
 function toggleSlice() { showSlice = !showSlice; document.getElementById('b_slice').classList.toggle('active', showSlice); if(!showSlice) poincarePoints = []; }
-function setAuto(v) { isAuto = v; document.getElementById('b_auto').classList.toggle('active', v); document.getElementById('b_man').classList.toggle('active', !v); document.getElementById('camSlider').disabled = !v; document.getElementById('camLabel').style.opacity = v ? "1" : "0.2"; }
+function setAuto(v) { isAuto = v; document.getElementById('camSlider').disabled = !v; document.getElementById('camLabel').style.opacity = v ? "1" : "0.2"; }
 
 function resetPoints() { 
     actors = []; poincarePoints = []; divergenceData = [];
@@ -131,14 +129,11 @@ function resetPoints() {
 
 function project(x, y, z) {
     const scale = (Math.min(W, H) * 0.015) * zoom;
-    const tz = z - 27; // Shift Z to rotate around attractor core
-    
-    // 3D Rotation Math
+    const tz = z - 27; 
     let xR = x * Math.cos(rotationX) - tz * Math.sin(rotationX);
     let zR = x * Math.sin(rotationX) + tz * Math.cos(rotationX);
     let yR = y * Math.cos(rotationY) - zR * Math.sin(rotationY);
-    
-    // FIXED: Panning applied to Screen Coordinates correctly relative to DPR
+    // Hard-coded centering with pan offset
     return { 
         sx: (W / 2) + (panX * dpr) + (xR * scale), 
         sy: (H / 2) + (panY * dpr) + (yR * scale) 
@@ -159,9 +154,8 @@ function drawDivergence() {
 function draw() {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     if (isAuto && !isDragging && !isPanning) { 
-        let camStep = camSpeed * 0.005;
-        rotationX += camStep; 
-        rotationY = 0.5 + Math.sin(autoTimer += (camStep * 0.1)) * 0.2;
+        rotationX += camSpeed * 0.005; 
+        rotationY = 0.5 + Math.sin(autoTimer += 0.01) * 0.2;
     }
 
     if (vField) {
@@ -180,25 +174,17 @@ function draw() {
 
     if (showSlice) {
         ctx.strokeStyle = 'rgba(0, 210, 255, 0.25)'; ctx.lineWidth = 1 * dpr; ctx.beginPath();
-        // Symmetrical Tri-Plane Construction
         for(let i=-30; i<=30; i+=10) {
-            // XY Plane at Z=27
+            // XY Plane
             let p1 = project(-30, i, 27), p2 = project(30, i, 27);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
             let p3 = project(i, -30, 27), p4 = project(i, 30, 27);
             ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
-            
-            // XZ Plane at Y=0
+            // XZ & YZ Planes
             let p5 = project(i, 0, -3+27), p6 = project(i, 0, 33+27);
             ctx.moveTo(p5.sx, p5.sy); ctx.lineTo(p6.sx, p6.sy);
-            let p7 = project(-30, 0, i+27), p8 = project(30, 0, i+27);
+            let p7 = project(0, i, -3+27), p8 = project(0, i, 33+27);
             ctx.moveTo(p7.sx, p7.sy); ctx.lineTo(p8.sx, p8.sy);
-
-            // YZ Plane at X=0
-            let p9 = project(0, i, -3+27), p10 = project(0, i, 33+27);
-            ctx.moveTo(p9.sx, p9.sy); ctx.lineTo(p10.sx, p10.sy);
-            let p11 = project(0, -30, i+27), p12 = project(0, 30, i+27);
-            ctx.moveTo(p11.sx, p11.sy); ctx.lineTo(p12.sx, p12.sy);
         }
         ctx.stroke();
     }
@@ -213,7 +199,6 @@ function draw() {
             a.x += dx; a.y += dy; a.z += dz;
             a.points.push({x: a.x, y: a.y, z: a.z});
             if (a.points.length > 800) a.points.shift();
-            
             if (showSlice) {
                 if ((a.lastZ <= 27 && a.z >= 27) || (a.lastZ >= 27 && a.z <= 27)) poincarePoints.push({x: a.x, y: a.y, z: 27});
                 if ((a.lastX <= 0 && a.x >= 0) || (a.lastX >= 0 && a.x <= 0)) poincarePoints.push({x: 0, y: a.y, z: a.z});
@@ -256,28 +241,35 @@ function draw() {
 
 function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; }
 
-// FIXED: Mouse Interaction Engine for Desktop
+// DESKTOP INTERACTION: Uses movementX/Y for rock-solid tracking
 cv.addEventListener('mousedown', e => {
-    lastX = e.clientX; lastY = e.clientY;
-    if (e.button === 2) { isPanning = true; isDragging = false; } 
-    else { isDragging = true; isPanning = false; }
+    if (e.button === 2) isPanning = true; else isDragging = true;
 });
+
 window.addEventListener('mousemove', e => {
-    if (!isDragging && !isPanning) return;
-    let dx = (e.clientX - lastX); let dy = (e.clientY - lastY);
-    if (isDragging) { rotationX += dx * 0.007; rotationY += dy * 0.007; } 
-    else if (isPanning) { panX += dx / dpr; panY += dy / dpr; }
-    lastX = e.clientX; lastY = e.clientY;
+    if (isDragging) { rotationX += e.movementX * 0.007; rotationY += e.movementY * 0.007; }
+    if (isPanning) { panX += e.movementX / dpr; panY += e.movementY / dpr; }
 });
+
 window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
 window.addEventListener('wheel', e => { zoom *= e.deltaY > 0 ? 0.9 : 1.1; e.preventDefault(); }, {passive:false});
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
-// Mobile Touch Engine
-cv.addEventListener('touchstart', e => { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; isDragging = true; }, { passive: false });
-cv.addEventListener('touchmove', e => { if (!isDragging) return; rotationX += (e.touches[0].clientX - lastX) * 0.008; rotationY += (e.touches[0].clientY - lastY) * 0.008; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; e.preventDefault(); }, { passive: false });
-window.addEventListener('touchend', () => isDragging = false);
+// MOBILE TOUCH
+cv.addEventListener('touchstart', e => {
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    isDragging = true;
+}, { passive: false });
 
+cv.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    rotationX += (e.touches[0].clientX - lastX) * 0.008;
+    rotationY += (e.touches[0].clientY - lastY) * 0.008;
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    e.preventDefault();
+}, { passive: false });
+
+window.addEventListener('touchend', () => isDragging = false);
 window.addEventListener('resize', resize);
 initUI(); resize(); resetPoints(); draw();
 </script>
