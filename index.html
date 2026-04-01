@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>The Lorenz Flux - stable_v9_final</title>
+    <title>The Lorenz Flux - v9.5 Stability Build</title>
     <style>
         body { margin: 0; background: #000; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
         
@@ -23,10 +23,10 @@
             gap: 10px; box-sizing: border-box; z-index: 1001;
         }
 
-        @media (min-width: 900px) {
+        @media (min-width: 950px) {
             #controls { 
                 bottom: 20px; left: 50%; transform: translateX(-50%); width: 96%; 
-                max-width: 1400px; border: 1px solid rgba(255,255,255,0.2); border-radius: 16px;
+                max-width: 1500px; border: 1px solid rgba(255,255,255,0.2); border-radius: 16px;
                 display: flex; flex-wrap: nowrap; justify-content: space-around; align-items: center;
             }
             #mobileNav { display: none !important; }
@@ -93,6 +93,8 @@ const dcv = document.getElementById('diagCanvas'), dctx = dcv.getContext('2d');
 let W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
 let sigma = 10, rho = 28, beta = 2.67;
 let actors = [], activeCount = 1, masterSpeed = 12, camSpeed = 10;
+
+// FIXED: Panning and Rotation variables initialized for central focus
 let rotationX = 0.8, rotationY = 0.4, panX = 0, panY = 0, zoom = 1.0, autoTimer = 0;
 let isAuto = false, isDragging = false, isPanning = false, lastX, lastY, moveInterval, zoomInterval;
 let vField = false, vBlueMode = false, vHeads = true, showSlice = false, poincarePoints = [], divergenceData = [];
@@ -100,7 +102,7 @@ let vField = false, vBlueMode = false, vHeads = true, showSlice = false, poincar
 const colors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600'];
 const blueShades = ['#00d2ff', '#0078ff', '#3d5afe'];
 
-function startMove(x, y) { moveInterval = setInterval(() => { panX += x; panY += y; }, 16); }
+function startMove(x, y) { moveInterval = setInterval(() => { panX += x / dpr; panY += y / dpr; }, 16); }
 function stopMove() { clearInterval(moveInterval); }
 function startZoom(f) { zoomInterval = setInterval(() => { zoom *= f; }, 16); }
 function stopZoom() { clearInterval(zoomInterval); }
@@ -118,13 +120,7 @@ function initUI() {
 }
 
 function toggleSlice() { showSlice = !showSlice; document.getElementById('b_slice').classList.toggle('active', showSlice); if(!showSlice) poincarePoints = []; }
-function setAuto(v) { 
-    isAuto = v; 
-    document.getElementById('b_auto').classList.toggle('active', v); 
-    document.getElementById('b_man').classList.toggle('active', !v); 
-    document.getElementById('camSlider').disabled = !v;
-    document.getElementById('camLabel').style.opacity = v ? "1" : "0.2";
-}
+function setAuto(v) { isAuto = v; document.getElementById('b_auto').classList.toggle('active', v); document.getElementById('b_man').classList.toggle('active', !v); document.getElementById('camSlider').disabled = !v; document.getElementById('camLabel').style.opacity = v ? "1" : "0.2"; }
 
 function resetPoints() { 
     actors = []; poincarePoints = []; divergenceData = [];
@@ -135,12 +131,18 @@ function resetPoints() {
 
 function project(x, y, z) {
     const scale = (Math.min(W, H) * 0.015) * zoom;
-    const tz = z - 27; 
+    const tz = z - 27; // Shift Z to rotate around attractor core
+    
+    // 3D Rotation Math
     let xR = x * Math.cos(rotationX) - tz * Math.sin(rotationX);
     let zR = x * Math.sin(rotationX) + tz * Math.cos(rotationX);
     let yR = y * Math.cos(rotationY) - zR * Math.sin(rotationY);
-    // Panning logic fixed for desktop right-click
-    return { sx: (W/2) + (panX * dpr) + (xR * scale), sy: (H/2) + (panY * dpr) + (yR * scale) };
+    
+    // FIXED: Panning applied to Screen Coordinates correctly relative to DPR
+    return { 
+        sx: (W / 2) + (panX * dpr) + (xR * scale), 
+        sy: (H / 2) + (panY * dpr) + (yR * scale) 
+    };
 }
 
 function drawDivergence() {
@@ -164,12 +166,12 @@ function draw() {
 
     if (vField) {
         ctx.lineWidth = 1 * dpr;
-        for(let i=-25; i<=25; i+=12.5) {
-            for(let j=-25; j<=25; j+=12.5) {
-                for(let k=2; k<=52; k+=12.5) {
-                    let dx = sigma*(j-i)*0.012, dy = (i*(rho-k)-j)*0.012, dz = (i*j-beta*k)*0.012;
-                    let p1 = project(i,j,k), p2 = project(i+dx*3, j+dy*3, k+dz*3);
-                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.08)';
+        for(let i=-30; i<=30; i+=15) {
+            for(let j=-30; j<=30; j+=15) {
+                for(let k=0; k<=60; k+=15) {
+                    let dx = sigma*(j-i)*0.01, dy = (i*(rho-k)-j)*0.01, dz = (i*j-beta*k)*0.01;
+                    let p1 = project(i,j,k), p2 = project(i+dx*5, j+dy*5, k+dz*5);
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
                     ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
                 }
             }
@@ -177,23 +179,26 @@ function draw() {
     }
 
     if (showSlice) {
-        ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
-        // Fixed Slice Grids
-        for(let i=-25; i<=25; i+=5) {
-            let p1 = project(-25, i, 27), p2 = project(25, i, 27);
+        ctx.strokeStyle = 'rgba(0, 210, 255, 0.25)'; ctx.lineWidth = 1 * dpr; ctx.beginPath();
+        // Symmetrical Tri-Plane Construction
+        for(let i=-30; i<=30; i+=10) {
+            // XY Plane at Z=27
+            let p1 = project(-30, i, 27), p2 = project(30, i, 27);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
-            let p3 = project(i, -25, 27), p4 = project(i, 25, 27);
+            let p3 = project(i, -30, 27), p4 = project(i, 30, 27);
             ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
             
-            let pXZ1 = project(i, 0, 2), pXZ2 = project(i, 0, 52);
-            ctx.moveTo(pXZ1.sx, pXZ1.sy); ctx.lineTo(pXZ2.sx, pXZ2.sy);
-            let pXZ3 = project(-25, 0, i+27), pXZ4 = project(25, 0, i+27);
-            ctx.moveTo(pXZ3.sx, pXZ3.sy); ctx.lineTo(pXZ4.sx, pXZ4.sy);
-            
-            let pYZ1 = project(0, i, 2), pYZ2 = project(0, i, 52);
-            ctx.moveTo(pYZ1.sx, pYZ1.sy); ctx.lineTo(pYZ2.sx, pYZ2.sy);
-            let pYZ3 = project(0, -25, i+27), pYZ4 = project(0, 25, i+27);
-            ctx.moveTo(pYZ3.sx, pYZ3.sy); ctx.lineTo(pYZ4.sx, pYZ4.sy);
+            // XZ Plane at Y=0
+            let p5 = project(i, 0, -3+27), p6 = project(i, 0, 33+27);
+            ctx.moveTo(p5.sx, p5.sy); ctx.lineTo(p6.sx, p6.sy);
+            let p7 = project(-30, 0, i+27), p8 = project(30, 0, i+27);
+            ctx.moveTo(p7.sx, p7.sy); ctx.lineTo(p8.sx, p8.sy);
+
+            // YZ Plane at X=0
+            let p9 = project(0, i, -3+27), p10 = project(0, i, 33+27);
+            ctx.moveTo(p9.sx, p9.sy); ctx.lineTo(p10.sx, p10.sy);
+            let p11 = project(0, -30, i+27), p12 = project(0, 30, i+27);
+            ctx.moveTo(p11.sx, p11.sy); ctx.lineTo(p12.sx, p12.sy);
         }
         ctx.stroke();
     }
@@ -228,7 +233,7 @@ function draw() {
         let proj = project(p.x, p.y, p.z);
         ctx.fillStyle = '#fff'; ctx.fillRect(proj.sx, proj.sy, 1.2*dpr, 1.2*dpr);
     });
-    if (poincarePoints.length > 5000) poincarePoints.shift();
+    if (poincarePoints.length > 3000) poincarePoints.shift();
 
     actors.slice(0, activeCount).forEach(actor => {
         if (actor.points.length < 2) return;
@@ -251,7 +256,7 @@ function draw() {
 
 function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; }
 
-// Desktop Nav Fixed
+// FIXED: Mouse Interaction Engine for Desktop
 cv.addEventListener('mousedown', e => {
     lastX = e.clientX; lastY = e.clientY;
     if (e.button === 2) { isPanning = true; isDragging = false; } 
@@ -259,16 +264,16 @@ cv.addEventListener('mousedown', e => {
 });
 window.addEventListener('mousemove', e => {
     if (!isDragging && !isPanning) return;
-    let dx = e.clientX - lastX, dy = e.clientY - lastY;
+    let dx = (e.clientX - lastX); let dy = (e.clientY - lastY);
     if (isDragging) { rotationX += dx * 0.007; rotationY += dy * 0.007; } 
-    else if (isPanning) { panX += dx; panY += dy; }
+    else if (isPanning) { panX += dx / dpr; panY += dy / dpr; }
     lastX = e.clientX; lastY = e.clientY;
 });
 window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
 window.addEventListener('wheel', e => { zoom *= e.deltaY > 0 ? 0.9 : 1.1; e.preventDefault(); }, {passive:false});
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
-// Mobile Touch
+// Mobile Touch Engine
 cv.addEventListener('touchstart', e => { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; isDragging = true; }, { passive: false });
 cv.addEventListener('touchmove', e => { if (!isDragging) return; rotationX += (e.touches[0].clientX - lastX) * 0.008; rotationY += (e.touches[0].clientY - lastY) * 0.008; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; e.preventDefault(); }, { passive: false });
 window.addEventListener('touchend', () => isDragging = false);
