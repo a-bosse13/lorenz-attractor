@@ -128,19 +128,12 @@ function resetPoints() {
 }
 
 function project(x, y, z) {
-    // Zoom factor applied to base scale
     const scale = (Math.min(W, H) * 0.015) * zoom;
     const tz = z - 27; 
-    
     let xR = x * Math.cos(rotationX) - tz * Math.sin(rotationX);
     let zR = x * Math.sin(rotationX) + tz * Math.cos(rotationX);
     let yR = y * Math.cos(rotationY) - zR * Math.sin(rotationY);
-    
-    // sx/sy centered on canvas + pan offset * dpr for retina accuracy
-    return { 
-        sx: (W / 2) + (panX * dpr) + (xR * scale), 
-        sy: (H / 2) + (panY * dpr) + (yR * scale) 
-    };
+    return { sx: (W/2) + (panX * dpr) + (xR * scale), sy: (H/2) + (panY * dpr) + (yR * scale) };
 }
 
 function drawDivergence() {
@@ -176,17 +169,22 @@ function draw() {
     }
 
     if (showSlice) {
-        ctx.strokeStyle = 'rgba(0, 210, 255, 0.25)'; ctx.lineWidth = 1 * dpr; ctx.beginPath();
-        for(let i=-30; i<=30; i+=10) {
+        ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
+        for(let i = -30; i <= 30; i += 5) {
             let p1 = project(-30, i, 27), p2 = project(30, i, 27);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
             let p3 = project(i, -30, 27), p4 = project(i, 30, 27);
             ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
-            
-            let p5 = project(i, 0, -3+27), p6 = project(i, 0, 33+27);
-            ctx.moveTo(p5.sx, p5.sy); ctx.lineTo(p6.sx, p6.sy);
-            let p7 = project(0, i, -3+27), p8 = project(0, i, 33+27);
-            ctx.moveTo(p7.sx, p7.sy); ctx.lineTo(p8.sx, p8.sy);
+
+            let pXZ1 = project(i, 0, 2), pXZ2 = project(i, 0, 52);
+            ctx.moveTo(pXZ1.sx, pXZ1.sy); ctx.lineTo(pXZ2.sx, pXZ2.sy);
+            let pXZ3 = project(-30, 0, i + 27), pXZ4 = project(30, 0, i + 27);
+            ctx.moveTo(pXZ3.sx, pXZ3.sy); ctx.lineTo(pXZ4.sx, pXZ4.sy);
+
+            let pYZ1 = project(0, i, 2), pYZ2 = project(0, i, 52);
+            ctx.moveTo(pYZ1.sx, pYZ1.sy); ctx.lineTo(pYZ2.sx, pYZ2.sy);
+            let pYZ3 = project(0, -30, i + 27), pYZ4 = project(0, 30, i + 27);
+            ctx.moveTo(pYZ3.sx, pYZ3.sy); ctx.lineTo(pYZ4.sx, pYZ4.sy);
         }
         ctx.stroke();
     }
@@ -249,14 +247,13 @@ cv.addEventListener('mousedown', e => {
 });
 
 window.addEventListener('mousemove', e => {
-    // movementX/Y ignores absolute screen position and just tracks mouse drift
     if (isDragging) { rotationX += e.movementX * 0.007; rotationY += e.movementY * 0.007; }
     if (isPanning) { panX += e.movementX / dpr; panY += e.movementY / dpr; }
 });
 
 window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
 window.addEventListener('wheel', e => { zoom *= e.deltaY > 0 ? 0.9 : 1.1; e.preventDefault(); }, {passive:false});
-cv.addEventListener('contextmenu', e => e.preventDefault()); // Disable context menu for right-click pan
+cv.addEventListener('contextmenu', e => e.preventDefault());
 
 // MOBILE TOUCH
 cv.addEventListener('touchstart', e => {
