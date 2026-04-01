@@ -161,24 +161,23 @@ function draw() {
 
     if (showSlice) {
         ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
-        // Fully Loaded Symmetrical Grid Construction
         for(let i = -30; i <= 30; i += 5) {
-            // XY Plane lines
-            let xy1 = project(-30, i, 27), xy2 = project(30, i, 27);
-            ctx.moveTo(xy1.sx, xy1.sy); ctx.lineTo(xy2.sx, xy2.sy);
-            let xy3 = project(i, -30, 27), xy4 = project(i, 30, 27);
-            ctx.moveTo(xy3.sx, xy3.sy); ctx.lineTo(xy4.sx, xy4.sy);
+            // XY Plane (Horizontal Mesh)
+            let p1 = project(-30, i, 27), p2 = project(30, i, 27);
+            ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
+            let p3 = project(i, -30, 27), p4 = project(i, 30, 27);
+            ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
 
-            // XZ Plane lines
-            let xz1 = project(i, 0, 2), xz2 = project(i, 0, 52);
+            // XZ Plane (Vertical Front Mesh)
+            let xz1 = project(i, 0, 2), xz2 = project(i, 0, 52); // Vertical bars
             ctx.moveTo(xz1.sx, xz1.sy); ctx.lineTo(xz2.sx, xz2.sy);
-            let xz3 = project(-30, 0, i+27), xz4 = project(30, 0, i+27);
+            let xz3 = project(-30, 0, i+27), xz4 = project(30, 0, i+27); // Horizontal bars
             ctx.moveTo(xz3.sx, xz3.sy); ctx.lineTo(xz4.sx, xz4.sy);
 
-            // YZ Plane lines
-            let yz1 = project(0, i, 2), yz2 = project(0, i, 52);
+            // YZ Plane (Side Mesh)
+            let yz1 = project(0, i, 2), yz2 = project(0, i, 52); // Vertical bars
             ctx.moveTo(yz1.sx, yz1.sy); ctx.lineTo(yz2.sx, yz2.sy);
-            let yz3 = project(0, -30, i+27), yz4 = project(0, 30, i+27);
+            let yz3 = project(0, -30, i+27), yz4 = project(0, 30, i+27); // Horizontal bars
             ctx.moveTo(yz3.sx, yz3.sy); ctx.lineTo(yz4.sx, yz4.sy);
         }
         ctx.stroke();
@@ -236,7 +235,6 @@ function draw() {
 
 function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; }
 
-// Desktop Panning Fix:movementX/Y tracking
 cv.addEventListener('mousedown', e => { if (e.button === 2) isPanning = true; else isDragging = true; });
 window.addEventListener('mousemove', e => {
     if (isDragging) { rotationX += e.movementX * 0.007; rotationY += e.movementY * 0.007; }
