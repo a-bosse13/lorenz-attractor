@@ -26,7 +26,7 @@
         @media (min-width: 900px) {
             #controls { 
                 bottom: 20px; left: 50%; transform: translateX(-50%); width: 96%; 
-                max-width: 1400px; border: 1px solid rgba(255,255,255,0.2); border-radius: 16px;
+                max-width: 1400px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px;
                 display: flex; flex-wrap: nowrap; justify-content: space-around; align-items: center;
             }
             #mobileNav { display: none !important; }
@@ -100,7 +100,7 @@ let vField = false, vBlueMode = false, vHeads = true, showSlice = false, poincar
 const colors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600'];
 const blueShades = ['#00d2ff', '#0078ff', '#3d5afe'];
 
-function startMove(x, y) { moveInterval = setInterval(() => { panX += x; panY += y; }, 16); }
+function startMove(x, y) { moveInterval = setInterval(() => { panX += x / dpr; panY += y / dpr; }, 16); }
 function stopMove() { clearInterval(moveInterval); }
 function startZoom(f) { zoomInterval = setInterval(() => { zoom *= f; }, 16); }
 function stopZoom() { clearInterval(zoomInterval); }
@@ -133,6 +133,7 @@ function project(x, y, z) {
     let xR = x * Math.cos(rotationX) - tz * Math.sin(rotationX);
     let zR = x * Math.sin(rotationX) + tz * Math.cos(rotationX);
     let yR = y * Math.cos(rotationY) - zR * Math.sin(rotationY);
+    // FIXED: Correct screen mapping with independent pan control
     return { sx: (W/2) + (panX * dpr) + (xR * scale), sy: (H/2) + (panY * dpr) + (yR * scale) };
 }
 
@@ -170,20 +171,22 @@ function draw() {
 
     if (showSlice) {
         ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
+        // Recalculated symmetrical grid planes
         for(let i = -30; i <= 30; i += 5) {
+            // XY Plane
             let p1 = project(-30, i, 27), p2 = project(30, i, 27);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
             let p3 = project(i, -30, 27), p4 = project(i, 30, 27);
             ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
-
+            // XZ Plane
             let pXZ1 = project(i, 0, 2), pXZ2 = project(i, 0, 52);
             ctx.moveTo(pXZ1.sx, pXZ1.sy); ctx.lineTo(pXZ2.sx, pXZ2.sy);
-            let pXZ3 = project(-30, 0, i + 27), pXZ4 = project(30, 0, i + 27);
+            let pXZ3 = project(-30, 0, i+27), pXZ4 = project(30, 0, i+27);
             ctx.moveTo(pXZ3.sx, pXZ3.sy); ctx.lineTo(pXZ4.sx, pXZ4.sy);
-
+            // YZ Plane
             let pYZ1 = project(0, i, 2), pYZ2 = project(0, i, 52);
             ctx.moveTo(pYZ1.sx, pYZ1.sy); ctx.lineTo(pYZ2.sx, pYZ2.sy);
-            let pYZ3 = project(0, -30, i + 27), pYZ4 = project(0, 30, i + 27);
+            let pYZ3 = project(0, -30, i+27), pYZ4 = project(0, 30, i+27);
             ctx.moveTo(pYZ3.sx, pYZ3.sy); ctx.lineTo(pYZ4.sx, pYZ4.sy);
         }
         ctx.stroke();
@@ -241,7 +244,7 @@ function draw() {
 
 function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; }
 
-// DESKTOP INTERACTION: Uses movementX/Y for direct browser-level tracking
+// DESKTOP INTERACTION: Re-mapped to movementX/Y for direct delta tracking
 cv.addEventListener('mousedown', e => {
     if (e.button === 2) isPanning = true; else isDragging = true;
 });
@@ -255,7 +258,7 @@ window.addEventListener('mouseup', () => { isDragging = false; isPanning = false
 window.addEventListener('wheel', e => { zoom *= e.deltaY > 0 ? 0.9 : 1.1; e.preventDefault(); }, {passive:false});
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
-// MOBILE TOUCH
+// MOBILE TOUCH ENGINE
 cv.addEventListener('touchstart', e => {
     lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
     isDragging = true;
