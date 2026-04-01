@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>The Lorenz Flux - Restoration Build</title>
+    <title>The Lorenz Flux - Full Capability Build</title>
     <style>
         body { margin: 0; background: #000; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
         
@@ -15,13 +15,13 @@
         #diagCanvas { width: 100%; height: 80%; border-bottom: 1px solid rgba(255,255,255,0.2); }
         .diagLabel { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #00d2ff; margin-bottom: 5px; display: block; }
 
-        /* HUD - Adaptive Layout */
+        /* Adaptive HUD */
         #controls {
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: rgba(10, 15, 25, 0.95); backdrop-filter: blur(15px);
             border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 15px; display: grid; grid-template-columns: repeat(2, 1fr);
-            gap: 12px; box-sizing: border-box; z-index: 1001;
+            padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 10px; box-sizing: border-box; z-index: 1001;
         }
 
         @media (min-width: 900px) {
@@ -33,16 +33,15 @@
             #mobileNav { display: none !important; }
         }
 
-        /* Mobile Nav Restoration */
         #mobileNav {
             position: absolute; top: 15px; left: 15px; 
             display: flex; flex-direction: column; gap: 8px; z-index: 1005;
         }
-        .dpad { display: grid; grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(2, 42px); gap: 4px; }
+        .dpad { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(2, 40px); gap: 4px; }
         .nav-btn { 
             background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(0, 210, 255, 0.3);
-            color: #00d2ff; border-radius: 6px; font-weight: bold; width: 42px; height: 42px;
-            display: flex; align-items: center; justify-content: center;
+            color: #00d2ff; border-radius: 6px; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
         }
 
         .group { display: flex; flex-direction: column; gap: 4px; min-width: 80px; }
@@ -80,10 +79,10 @@
     <div class="group"><span class="label">Observer</span><div style="display:flex; gap:5px;"><button class="btn active" id="b_man" onclick="setAuto(false)">Man</button><button class="btn" id="b_auto" onclick="setAuto(true)">Auto</button></div></div>
     <div class="group"><span class="label">Analysis</span><button class="btn" id="b_slice" onclick="toggleSlice()">Tri-Plane Slice</button></div>
     <div class="group"><span class="label">Visuals</span><div style="display:flex; gap:4px;"><button class="btn" id="b_field" onclick="vField=!vField; this.classList.toggle('active')">Field</button><button class="btn" id="b_blue" onclick="vBlueMode=!vBlueMode; this.classList.toggle('active')">Tri-Blue</button></div></div>
-    <div class="group"><span class="label">Ensemble</span><div id="pointGrid" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:3px;"></div></div>
+    <div class="group"><span class="label">Ensemble</span><div id="pointGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:3px;"></div></div>
     <div class="group"><span class="label">Restless</span><input type="range" min="1" max="35" value="10" oninput="sigma=+this.value"></div>
     <div class="group"><span class="label">Speed</span><input type="range" min="1" max="30" value="12" oninput="masterSpeed=+this.value"></div>
-    <div class="group" style="grid-column: span 2;"><button class="btn" onclick="resetPoints()" style="border-color: #00d2ff; color: #00d2ff; font-weight:bold;">RESET SYSTEM</button></div>
+    <div class="group" style="grid-column: span 2;"><button class="btn" onclick="resetPoints()" style="border-color: #00d2ff; color: #00d2ff; font-weight:bold; padding: 10px;">RESET SIMULATION</button></div>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -93,12 +92,12 @@ const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
 const dcv = document.getElementById('diagCanvas'), dctx = dcv.getContext('2d');
 let W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
 let sigma = 10, rho = 28, beta = 2.67;
-let actors = [], activeCount = 1, masterSpeed = 12, trailLimit = 1000;
+let actors = [], activeCount = 1, masterSpeed = 12;
 let rotationX = 0, rotationY = 0.5, panX = 0, panY = 0, zoom = 1.0;
 let isAuto = false, isDragging = false, lastX, lastY, moveInterval, zoomInterval, divergenceData = [];
 let vField = false, vBlueMode = false, showSlice = false, poincarePoints = [];
 
-const baseColors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600'];
+const colors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600'];
 const blueShades = ['#00d2ff', '#0078ff', '#3d5afe'];
 
 function startMove(x, y) { moveInterval = setInterval(() => { panX += x; panY += y; }, 16); }
@@ -123,7 +122,9 @@ function setAuto(v) { isAuto = v; document.getElementById('b_auto').classList.to
 
 function resetPoints() { 
     actors = []; poincarePoints = []; divergenceData = [];
-    for(let i = 0; i < 5000; i++) { actors.push({ x: 0.1 + (i * 0.0001), y: 0, z: 0, lastZ: 0, points: [], color: baseColors[i % 6], blue: blueShades[i % 3] }); } 
+    for(let i = 0; i < 5000; i++) { 
+        actors.push({ x: 0.1 + (i * 0.0001), y: 0, z: 0, lastX: 0, lastY: 0, lastZ: 0, points: [], color: colors[i % 6], blue: blueShades[i % 3] }); 
+    } 
 }
 
 function project(x, y, z) {
@@ -166,11 +167,22 @@ function draw() {
 
     if (showSlice) {
         ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
+        // XY Grid at Z=27
         for(let i=-25; i<=25; i+=5) {
             let p1 = project(-25, i, 27), p2 = project(25, i, 27);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
             let p3 = project(i, -25, 27), p4 = project(i, 25, 27);
             ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
+        }
+        // XZ Grid at Y=0
+        for(let i=-25; i<=25; i+=5) {
+            let p1 = project(i, 0, 2), p2 = project(i, 0, 52);
+            ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
+        }
+        // YZ Grid at X=0
+        for(let i=-25; i<=25; i+=5) {
+            let p1 = project(0, i, 2), p2 = project(0, i, 52);
+            ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
         }
         ctx.stroke();
     }
@@ -181,10 +193,16 @@ function draw() {
         for (let i = 0; i < activeCount; i++) {
             let a = actors[i];
             let dx = (sigma * (a.y - a.x)) * dt, dy = (a.x * (rho - a.z) - a.y) * dt, dz = (a.x * a.y - beta * a.z) * dt;
-            a.lastZ = a.z; a.x += dx; a.y += dy; a.z += dz;
+            a.lastX = a.x; a.lastY = a.y; a.lastZ = a.z;
+            a.x += dx; a.y += dy; a.z += dz;
             a.points.push({x: a.x, y: a.y, z: a.z});
             if (a.points.length > 800) a.points.shift();
-            if (showSlice && ((a.lastZ <= 27 && a.z >= 27) || (a.lastZ >= 27 && a.z <= 27))) poincarePoints.push({x: a.x, y: a.y, z: 27});
+            
+            if (showSlice) {
+                if ((a.lastZ <= 27 && a.z >= 27) || (a.lastZ >= 27 && a.z <= 27)) poincarePoints.push({x: a.x, y: a.y, z: 27});
+                if ((a.lastX <= 0 && a.x >= 0) || (a.lastX >= 0 && a.x <= 0)) poincarePoints.push({x: 0, y: a.y, z: a.z});
+                if ((a.lastY <= 0 && a.y >= 0) || (a.lastY >= 0 && a.y <= 0)) poincarePoints.push({x: a.x, y: 0, z: a.z});
+            }
         }
         if (activeCount > 1) {
             let sumDist = 0;
@@ -199,6 +217,7 @@ function draw() {
         let proj = project(p.x, p.y, p.z);
         ctx.fillStyle = '#fff'; ctx.fillRect(proj.sx, proj.sy, 1.2*dpr, 1.2*dpr);
     });
+    if (poincarePoints.length > 5000) poincarePoints.shift();
 
     actors.slice(0, activeCount).forEach(actor => {
         if (actor.points.length < 2) return;
