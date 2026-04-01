@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>The Lorenz Flux - v8_5k Sync</title>
+    <title>The Lorenz Flux - Pro Desktop Build</title>
     <style>
         body { margin: 0; background: #000; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
         
-        /* RESTORED: Diagnostic HUD */
         #diagnostic {
             position: absolute; top: 20px; right: 20px; width: 220px; height: 120px;
             background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(0, 210, 255, 0.3);
@@ -16,7 +15,6 @@
         #diagCanvas { width: 100%; height: 80%; border-bottom: 1px solid rgba(255,255,255,0.2); }
         .diagLabel { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #00d2ff; margin-bottom: 5px; display: block; }
 
-        /* HUD - Adaptive for Mobile/Desktop */
         #controls {
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: rgba(10, 15, 25, 0.95); backdrop-filter: blur(15px);
@@ -34,7 +32,6 @@
             #mobileNav { display: none !important; }
         }
 
-        /* Mobile D-Pad Restoration */
         #mobileNav {
             position: absolute; top: 15px; left: 15px; 
             display: flex; flex-direction: column; gap: 8px; z-index: 1005;
@@ -137,10 +134,7 @@ function setAuto(v) {
 function resetPoints() { 
     actors = []; poincarePoints = []; divergenceData = []; 
     for(let i = 0; i < 5000; i++) { 
-        actors.push({ 
-            x: 0.1 + (i * 0.0001), y: 0, z: 0, lastX: 0.1, lastY: 0, lastZ: 0, 
-            points: [], color: colors[i], blueColor: blueShades[i % 3] 
-        }); 
+        actors.push({ x: 0.1 + (i * 0.0001), y: 0, z: 0, lastX: 0.1, lastY: 0, lastZ: 0, points: [], color: colors[i], blueColor: blueShades[i % 3] }); 
     } 
 }
 
@@ -239,16 +233,16 @@ function draw() {
     if (poincarePoints.length > 5000) poincarePoints.shift();
 
     actors.slice(0, activeCount).forEach(actor => {
-        if (trailLimit > 0 && actor.points.length >= 2) {
-            const startIdx = Math.max(0, actor.points.length - trailLimit);
-            for (let i = startIdx; i < actor.points.length - 1; i++) {
-                let p1 = actor.points[i], p2 = actor.points[i+1];
-                let proj1 = project(p1.x, p1.y, p1.z, currentZoom), proj2 = project(p2.x, p2.y, p2.z, currentZoom);
-                ctx.strokeStyle = vBlueMode ? actor.blueColor : actor.color;
-                ctx.lineWidth = (0.1 + Math.pow((i - startIdx) / (actor.points.length - startIdx), 2.5) * 0.6) * dpr;
-                ctx.beginPath(); ctx.moveTo(proj1.sx, proj1.sy); ctx.lineTo(proj2.sx, proj2.sy); ctx.stroke();
-            }
+        if (actor.points.length < 2) return;
+        ctx.strokeStyle = vBlueMode ? actor.blueColor : actor.color;
+        ctx.lineWidth = 1.2 * dpr; ctx.beginPath();
+        let pStart = project(actor.points[0].x, actor.points[0].y, actor.points[0].z, currentZoom);
+        ctx.moveTo(pStart.sx, pStart.sy);
+        for(let i=1; i<actor.points.length; i+=2) {
+            let p = project(actor.points[i].x, actor.points[i].y, actor.points[i].z, currentZoom);
+            ctx.lineTo(p.sx, p.sy);
         }
+        ctx.stroke();
         if (vHeads) {
             let h = actor.points[actor.points.length-1], hp = project(h.x, h.y, h.z, currentZoom);
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(hp.sx, hp.sy, 1.5*dpr, 0, Math.PI*2); ctx.fill();
@@ -258,17 +252,38 @@ function draw() {
 }
 
 function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; }
-cv.addEventListener('touchstart', e => { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; isDragging = true; }, { passive: false });
-cv.addEventListener('touchmove', e => {
-    if (!isDragging) return;
-    rotationX += (e.touches[0].clientX - lastX) * 0.008; rotationY += (e.touches[0].clientY - lastY) * 0.008;
-    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; e.preventDefault();
-}, { passive: false });
-window.addEventListener('touchend', () => isDragging = false);
-cv.addEventListener('mousedown', e => { lastX = e.clientX; lastY = e.clientY; if (e.button === 2 || e.ctrlKey) isPanning = true; else isDragging = true; });
-window.addEventListener('mousemove', e => { if (isDragging) { rotationX += (e.clientX - lastX) * 0.007; rotationY += (e.clientY - lastY) * 0.007; } else if (isPanning) { panX += (e.clientX - lastX); panY += (e.clientY - lastY); } lastX = e.clientX; lastY = e.clientY; });
+
+// NEW: Professional Desktop Interactions
+cv.addEventListener('mousedown', e => {
+    lastX = e.clientX; lastY = e.clientY;
+    if (e.button === 2) { isPanning = true; isDragging = false; } 
+    else { isDragging = true; isPanning = false; }
+});
+
+window.addEventListener('mousemove', e => {
+    if (!isDragging && !isPanning) return;
+    let dx = e.clientX - lastX, dy = e.clientY - lastY;
+    if (isDragging) { rotationX += dx * 0.007; rotationY += dy * 0.007; } 
+    else if (isPanning) { panX += dx; panY += dy; }
+    lastX = e.clientX; lastY = e.clientY;
+});
+
 window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
+
+// NEW: Double-Click Reset
+cv.addEventListener('dblclick', () => { panX = 0; panY = 0; zoom = 1.0; rotationX = 0.8; rotationY = 0.4; });
+
+// Wheel Zoom
+window.addEventListener('wheel', e => { zoom *= e.deltaY > 0 ? 0.9 : 1.1; e.preventDefault(); }, {passive:false});
+
+// Mobile Touch
+cv.addEventListener('touchstart', e => { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; isDragging = true; }, { passive: false });
+cv.addEventListener('touchmove', e => { if (!isDragging) return; rotationX += (e.touches[0].clientX - lastX) * 0.008; rotationY += (e.touches[0].clientY - lastY) * 0.008; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; e.preventDefault(); }, { passive: false });
+window.addEventListener('touchend', () => isDragging = false);
+
 window.addEventListener('resize', resize);
+cv.addEventListener('contextmenu', e => e.preventDefault()); // Disable context menu for right-click pan
+
 initUI(); resize(); resetPoints(); draw();
 </script>
 </body>
