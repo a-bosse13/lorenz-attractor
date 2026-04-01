@@ -6,7 +6,6 @@
     <title>The Lorenz Flux - stable_v10_final</title>
     <style>
         body { margin: 0; background: #000; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
-        
         #diagnostic {
             position: absolute; top: 20px; right: 20px; width: 220px; height: 120px;
             background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(0, 210, 255, 0.3);
@@ -14,7 +13,6 @@
         }
         #diagCanvas { width: 100%; height: 80%; border-bottom: 1px solid rgba(255,255,255,0.2); }
         .diagLabel { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #00d2ff; margin-bottom: 5px; display: block; }
-
         #controls {
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: rgba(10, 15, 25, 0.95); backdrop-filter: blur(15px);
@@ -22,34 +20,27 @@
             padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr);
             gap: 10px; box-sizing: border-box; z-index: 1001;
         }
-
-        @media (min-width: 900px) {
+        @media (min-width: 950px) {
             #controls { 
                 bottom: 20px; left: 50%; transform: translateX(-50%); width: 96%; 
-                max-width: 1400px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px;
+                max-width: 1500px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px;
                 display: flex; flex-wrap: nowrap; justify-content: space-around; align-items: center;
             }
             #mobileNav { display: none !important; }
         }
-
         #mobileNav {
-            position: absolute; top: 15px; left: 15px; 
-            display: flex; flex-direction: column; gap: 8px; z-index: 1005;
+            position: absolute; top: 15px; left: 15px; display: flex; flex-direction: column; gap: 8px; z-index: 1005;
         }
         .dpad { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(2, 40px); gap: 4px; }
         .nav-btn { 
             background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(0, 210, 255, 0.3);
-            color: #00d2ff; border-radius: 6px; width: 40px; height: 40px;
-            display: flex; align-items: center; justify-content: center; font-weight: bold;
+            color: #00d2ff; border-radius: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: bold;
         }
-
         .group { display: flex; flex-direction: column; gap: 4px; min-width: 80px; }
         .label { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-weight: 800; }
-        
         input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
         input[type=range]::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.3); }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #00d2ff; margin-top: -7px; }
-
         .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; text-align: center; }
         .btn.active { background: #00d2ff; color: #000; border-color: #00d2ff; box-shadow: 0 0 15px rgba(0,210,255,0.4); }
     </style>
@@ -133,7 +124,6 @@ function project(x, y, z) {
     let xR = x * Math.cos(rotationX) - tz * Math.sin(rotationX);
     let zR = x * Math.sin(rotationX) + tz * Math.cos(rotationX);
     let yR = y * Math.cos(rotationY) - zR * Math.sin(rotationY);
-    // FIXED: Correct screen mapping with independent pan control
     return { sx: (W/2) + (panX * dpr) + (xR * scale), sy: (H/2) + (panY * dpr) + (yR * scale) };
 }
 
@@ -171,19 +161,17 @@ function draw() {
 
     if (showSlice) {
         ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
-        // Recalculated symmetrical grid planes
         for(let i = -30; i <= 30; i += 5) {
-            // XY Plane
             let p1 = project(-30, i, 27), p2 = project(30, i, 27);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
             let p3 = project(i, -30, 27), p4 = project(i, 30, 27);
             ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
-            // XZ Plane
+
             let pXZ1 = project(i, 0, 2), pXZ2 = project(i, 0, 52);
             ctx.moveTo(pXZ1.sx, pXZ1.sy); ctx.lineTo(pXZ2.sx, pXZ2.sy);
             let pXZ3 = project(-30, 0, i+27), pXZ4 = project(30, 0, i+27);
             ctx.moveTo(pXZ3.sx, pXZ3.sy); ctx.lineTo(pXZ4.sx, pXZ4.sy);
-            // YZ Plane
+
             let pYZ1 = project(0, i, 2), pYZ2 = project(0, i, 52);
             ctx.moveTo(pYZ1.sx, pYZ1.sy); ctx.lineTo(pYZ2.sx, pYZ2.sy);
             let pYZ3 = project(0, -30, i+27), pYZ4 = project(0, 30, i+27);
@@ -244,35 +232,23 @@ function draw() {
 
 function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; }
 
-// DESKTOP INTERACTION: Re-mapped to movementX/Y for direct delta tracking
-cv.addEventListener('mousedown', e => {
-    if (e.button === 2) isPanning = true; else isDragging = true;
-});
-
+cv.addEventListener('mousedown', e => { if (e.button === 2) isPanning = true; else isDragging = true; });
 window.addEventListener('mousemove', e => {
     if (isDragging) { rotationX += e.movementX * 0.007; rotationY += e.movementY * 0.007; }
     if (isPanning) { panX += e.movementX / dpr; panY += e.movementY / dpr; }
 });
-
 window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
 window.addEventListener('wheel', e => { zoom *= e.deltaY > 0 ? 0.9 : 1.1; e.preventDefault(); }, {passive:false});
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
-// MOBILE TOUCH ENGINE
-cv.addEventListener('touchstart', e => {
-    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-    isDragging = true;
-}, { passive: false });
-
+cv.addEventListener('touchstart', e => { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; isDragging = true; }, { passive: false });
 cv.addEventListener('touchmove', e => {
     if (!isDragging) return;
-    rotationX += (e.touches[0].clientX - lastX) * 0.008;
-    rotationY += (e.touches[0].clientY - lastY) * 0.008;
-    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-    e.preventDefault();
+    rotationX += (e.touches[0].clientX - lastX) * 0.008; rotationY += (e.touches[0].clientY - lastY) * 0.008;
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; e.preventDefault();
 }, { passive: false });
-
 window.addEventListener('touchend', () => isDragging = false);
+
 window.addEventListener('resize', resize);
 initUI(); resize(); resetPoints(); draw();
 </script>
