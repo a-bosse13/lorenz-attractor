@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>The Lorenz Flux - Full Restoration</title>
+    <title>The Lorenz Flux - Full Capability Restoration</title>
     <style>
         body { margin: 0; background: #000; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
         
-        /* Desktop Diagnostic Graph */
         #diagnostic {
             position: absolute; top: 20px; right: 20px; width: 220px; height: 120px;
             background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(0, 210, 255, 0.3);
@@ -16,7 +15,6 @@
         #diagCanvas { width: 100%; height: 80%; border-bottom: 1px solid rgba(255,255,255,0.2); }
         .diagLabel { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #00d2ff; margin-bottom: 5px; display: block; }
 
-        /* HUD - Adaptive Layout */
         #controls {
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: rgba(10, 15, 25, 0.95); backdrop-filter: blur(15px);
@@ -25,17 +23,15 @@
             gap: 10px; box-sizing: border-box; z-index: 1001;
         }
 
-        /* Desktop Restoration: Horizontal HUD */
-        @media (min-width: 900px) {
+        @media (min-width: 950px) {
             #controls { 
                 bottom: 20px; left: 50%; transform: translateX(-50%); width: 96%; 
-                max-width: 1400px; border: 1px solid rgba(255,255,255,0.2); border-radius: 16px;
-                display: flex; flex-wrap: nowrap; justify-content: space-around;
+                max-width: 1500px; border: 1px solid rgba(255,255,255,0.2); border-radius: 16px;
+                display: flex; flex-wrap: nowrap; justify-content: space-around; align-items: center;
             }
             #mobileNav { display: none !important; }
         }
 
-        /* Mobile D-Pad */
         #mobileNav {
             position: absolute; top: 15px; left: 15px; 
             display: flex; flex-direction: column; gap: 8px; z-index: 1005;
@@ -53,9 +49,10 @@
         input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
         input[type=range]::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.3); }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #00d2ff; margin-top: -7px; }
-        
+        input[type=range]:disabled { opacity: 0.2; }
+
         .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; text-align: center; }
-        .btn.active { background: #00d2ff; color: #000; border-color: #00d2ff; }
+        .btn.active { background: #00d2ff; color: #000; border-color: #00d2ff; box-shadow: 0 0 15px rgba(0,210,255,0.4); }
     </style>
 </head>
 <body>
@@ -81,11 +78,12 @@
 <div id="controls">
     <div class="group"><span class="label">Observer</span><div style="display:flex; gap:5px;"><button class="btn active" id="b_man" onclick="setAuto(false)">Man</button><button class="btn" id="b_auto" onclick="setAuto(true)">Auto</button></div></div>
     <div class="group"><span class="label">Analysis</span><button class="btn" id="b_slice" onclick="toggleSlice()">Tri-Plane Slice</button></div>
-    <div class="group"><span class="label">Visuals</span><div style="display:flex; gap:4px;"><button class="btn" id="b_field" onclick="vField=!vField; this.classList.toggle('active')">Field</button><button class="btn" id="b_blue" onclick="vBlueMode=!vBlueMode; this.classList.toggle('active')">Tri-Blue</button></div></div>
+    <div class="group"><span class="label">Visuals</span><div style="display:flex; gap:4px;"><button class="btn" id="b_field" onclick="vField=!vField; this.classList.toggle('active')">Field</button><button class="btn" id="b_blue" onclick="vBlueMode=!vBlueMode; this.classList.toggle('active')">Tri-Blue</button><button class="btn active" id="b_heads" onclick="vHeads=!vHeads; this.classList.toggle('active')">Heads</button></div></div>
     <div class="group"><span class="label">Ensemble</span><div id="pointGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:3px;"></div></div>
-    <div class="group"><span class="label">Restless (sigma)</span><input type="range" min="1" max="35" value="10" oninput="sigma=+this.value"></div>
+    <div class="group"><span class="label">Restless</span><input type="range" min="1" max="35" value="10" oninput="sigma=+this.value"></div>
     <div class="group"><span class="label">Speed</span><input type="range" min="1" max="30" value="12" oninput="masterSpeed=+this.value"></div>
-    <div class="group" style="grid-column: span 2;"><button class="btn" onclick="resetPoints()" style="border-color: #00d2ff; color: #00d2ff; font-weight:bold; padding: 10px;">RESET SIMULATION</button></div>
+    <div class="group"><span class="label" id="camLabel" style="opacity:0.2;">Cam Speed</span><input type="range" min="1" max="20" value="10" id="camSlider" oninput="camSpeed=+this.value" disabled></div>
+    <div class="group"><button class="btn" onclick="resetPoints()" style="border-color: #00d2ff; color: #00d2ff; font-weight:bold;">RESET</button></div>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -95,10 +93,10 @@ const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
 const dcv = document.getElementById('diagCanvas'), dctx = dcv.getContext('2d');
 let W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
 let sigma = 10, rho = 28, beta = 2.67;
-let actors = [], activeCount = 1, masterSpeed = 12;
-let rotationX = 0.8, rotationY = 0.4, panX = 0, panY = 0, zoom = 1.0;
+let actors = [], activeCount = 1, masterSpeed = 12, camSpeed = 10;
+let rotationX = 0, rotationY = 0.5, panX = 0, panY = 0, zoom = 1.0;
 let isAuto = false, isDragging = false, lastX, lastY, moveInterval, zoomInterval, divergenceData = [];
-let vField = false, vBlueMode = false, showSlice = false, poincarePoints = [];
+let vField = false, vBlueMode = false, vHeads = true, showSlice = false, poincarePoints = [], autoTimer = 0;
 
 const colors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600'];
 const blueShades = ['#00d2ff', '#0078ff', '#3d5afe'];
@@ -117,19 +115,15 @@ function initUI() {
         btn.onclick = () => { activeCount = val; document.querySelectorAll('#pointGrid .btn').forEach(b => b.classList.toggle('active', b.id === 'p'+val)); };
         grid.appendChild(btn);
     });
-    dcv.width = 220 * dpr; dcv.height = 80 * dpr;
 }
 
-function toggleSlice() { 
-    showSlice = !showSlice; 
-    document.getElementById('b_slice').classList.toggle('active', showSlice); 
-    if(!showSlice) poincarePoints = []; 
-}
-
+function toggleSlice() { showSlice = !showSlice; document.getElementById('b_slice').classList.toggle('active', showSlice); if(!showSlice) poincarePoints = []; }
 function setAuto(v) { 
     isAuto = v; 
     document.getElementById('b_auto').classList.toggle('active', v); 
     document.getElementById('b_man').classList.toggle('active', !v); 
+    document.getElementById('camSlider').disabled = !v;
+    document.getElementById('camLabel').style.opacity = v ? "1" : "0.2";
 }
 
 function resetPoints() { 
@@ -161,7 +155,11 @@ function drawDivergence() {
 
 function draw() {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    if (isAuto && !isDragging) { rotationX += 0.005; }
+    if (isAuto && !isDragging) { 
+        let camStep = camSpeed * 0.0005;
+        rotationX += camStep * 10; 
+        rotationY = 0.5 + Math.sin(autoTimer += camStep) * 0.2;
+    }
 
     if (vField) {
         ctx.lineWidth = 1 * dpr;
@@ -179,26 +177,17 @@ function draw() {
 
     if (showSlice) {
         ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
-        // Plane Z=27
         for(let i=-25; i<=25; i+=5) {
             let p1 = project(-25, i, 27), p2 = project(25, i, 27);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
             let p3 = project(i, -25, 27), p4 = project(i, 25, 27);
             ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
-        }
-        // Plane Y=0
-        for(let i=-25; i<=25; i+=5) {
-            let p1 = project(i, 0, 2), p2 = project(i, 0, 52);
-            ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
-            let p3 = project(-25, 0, i+27), p4 = project(25, 0, i+27);
-            ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
-        }
-        // Plane X=0
-        for(let i=-25; i<=25; i+=5) {
-            let p1 = project(0, i, 2), p2 = project(0, i, 52);
-            ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
-            let p3 = project(0, -25, i+27), p4 = project(0, 25, i+27);
-            ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
+            
+            let pXZ1 = project(i, 0, 2), pXZ2 = project(i, 0, 52);
+            ctx.moveTo(pXZ1.sx, pXZ1.sy); ctx.lineTo(pXZ2.sx, pXZ2.sy);
+            
+            let pYZ1 = project(0, i, 2), pYZ2 = project(0, i, 52);
+            ctx.moveTo(pYZ1.sx, pYZ1.sy); ctx.lineTo(pYZ2.sx, pYZ2.sy);
         }
         ctx.stroke();
     }
@@ -246,11 +235,15 @@ function draw() {
             ctx.lineTo(p.sx, p.sy);
         }
         ctx.stroke();
+        if (vHeads) {
+            let h = actor.points[actor.points.length-1], hp = project(h.x, h.y, h.z);
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(hp.sx, hp.sy, 1.5*dpr, 0, Math.PI*2); ctx.fill();
+        }
     });
     requestAnimationFrame(draw);
 }
 
-function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; }
+function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; dcv.width = 220 * dpr; dcv.height = 80 * dpr; }
 cv.addEventListener('touchstart', e => { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; isDragging = true; }, { passive: false });
 cv.addEventListener('touchmove', e => {
     if (!isDragging) return;
