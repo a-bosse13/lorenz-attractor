@@ -6,29 +6,37 @@
     <title>The Lorenz Flux - High Density Ensemble Lab</title>
     <style>
         body { margin: 0; background: #000; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
+        
         #diagnostic {
-            position: absolute; top: 20px; right: 20px; width: 220px; height: 120px;
+            position: absolute; top: 10px; right: 10px; width: 160px; height: 100px;
             background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(0, 210, 255, 0.3);
-            border-radius: 8px; padding: 10px; pointer-events: none; z-index: 1000;
+            border-radius: 8px; padding: 8px; pointer-events: none; z-index: 1000;
         }
-        #diagCanvas { width: 100%; height: 80%; border-bottom: 1px solid rgba(255,255,255,0.2); }
-        .diagLabel { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #00d2ff; margin-bottom: 5px; display: block; }
+        
+        #diagCanvas { width: 100%; height: 75%; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .diagLabel { font-size: 7px; text-transform: uppercase; letter-spacing: 1px; color: #00d2ff; margin-bottom: 4px; display: block; }
+        
         #controls {
-            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
-            width: 94%; max-width: 1400px; background: rgba(10, 15, 25, 0.92);
-            backdrop-filter: blur(15px); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 15px; display: flex; flex-wrap: nowrap; gap: 20px; justify-content: flex-start; align-items: center; 
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 1200px; background: rgba(10, 15, 25, 0.9);
+            backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px; display: flex; flex-wrap: nowrap; gap: 20px; justify-content: flex-start; align-items: center; 
             z-index: 1001; pointer-events: auto; overflow-x: auto; -webkit-overflow-scrolling: touch;
         }
+        
         #controls::-webkit-scrollbar { display: none; }
-        .group { display: flex; flex-direction: column; gap: 6px; min-width: 90px; flex-shrink: 0; }
-        .label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-weight: 800; }
+
+        .group { display: flex; flex-direction: column; gap: 4px; min-width: 100px; flex-shrink: 0; }
+        .label { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #fff; font-weight: 800; }
+        
         input[type=range] { -webkit-appearance: none; background: transparent; cursor: pointer; width: 100%; }
-        input[type=range]::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 22px; width: 22px; border-radius: 50%; background: #00d2ff; margin-top: -9px; box-shadow: 0 0 12px #00d2ff; }
-        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 8px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; transition: 0.2s; font-weight: 600; min-width: 32px; text-align: center; }
-        .btn.active { background: #00d2ff; color: #000; border-color: #00d2ff; box-shadow: 0 0 20px rgba(0, 210, 255, 0.5); }
-        @media (max-width: 600px) { #diagnostic { width: 140px; height: 80px; top: 10px; right: 10px; } .group { min-width: 110px; } }
+        input[type=range]::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #00d2ff; margin-top: -8px; box-shadow: 0 0 10px #00d2ff; }
+        
+        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; text-align: center; }
+        .btn.active { background: #00d2ff; color: #000; border-color: #00d2ff; }
+
+        #canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
     </style>
 </head>
 <body>
@@ -40,13 +48,11 @@
 
 <div id="controls">
     <div class="group"><span class="label">Observer</span><div style="display:flex; gap:5px;"><button class="btn active" id="b_man" onclick="setAuto(false)">Man</button><button class="btn" id="b_auto" onclick="setAuto(true)">Auto</button></div></div>
-    <div class="group"><span class="label">Analysis</span><button class="btn" id="b_slice" onclick="toggleSlice()">Tri-Plane Slice</button></div>
-    <div class="group"><span class="label">Visuals</span><div style="display:flex; gap:5px;"><button class="btn" id="b_field" onclick="vField=!vField; this.classList.toggle('active')">Field</button><button class="btn" id="b_blue" onclick="vBlueMode=!vBlueMode; this.classList.toggle('active')">Tri-Blue</button><button class="btn active" id="b_heads" onclick="vHeads=!vHeads; this.classList.toggle('active')">Heads</button></div></div>
-    <div class="group"><span class="label">Ensemble</span><div id="pointGrid" style="display:grid; grid-template-columns: repeat(6, 1fr); gap:3px;"></div></div>
-    <div class="group" style="width: 150px;"><span class="label">Restless</span><input type="range" min="1" max="35" value="10" oninput="sigma=+this.value"></div>
-    <div class="group" style="width: 150px;"><span class="label">Speed</span><input type="range" min="1" max="30" value="12" oninput="masterSpeed=+this.value"></div>
-    <div class="group" style="width: 150px;"><span class="label">Trails</span><input type="range" min="0" max="2000" value="1200" oninput="trailLimit=+this.value"></div>
-    <div class="group" style="width: 150px;"><span class="label" id="camLabel" style="opacity: 0.2;">Camera</span><input type="range" min="1" max="20" value="10" id="camSlider" oninput="camSpeed=+this.value" disabled></div>
+    <div class="group"><span class="label">Analysis</span><button class="btn" id="b_slice" onclick="toggleSlice()">Slice</button></div>
+    <div class="group"><span class="label">Visuals</span><div style="display:flex; gap:4px;"><button class="btn" onclick="vField=!vField; this.classList.toggle('active')">Field</button><button class="btn" onclick="vBlueMode=!vBlueMode; this.classList.toggle('active')">Blue</button></div></div>
+    <div class="group"><span class="label">Ensemble</span><div id="pointGrid" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:2px;"></div></div>
+    <div class="group"><span class="label">Restless</span><input type="range" min="1" max="35" value="10" oninput="sigma=+this.value"></div>
+    <div class="group"><span class="label">Speed</span><input type="range" min="1" max="30" value="12" oninput="masterSpeed=+this.value"></div>
     <div class="group"><button class="btn" onclick="resetPoints()" style="border-color: #00d2ff; color: #00d2ff;">Reset</button></div>
 </div>
 
@@ -59,35 +65,31 @@ let W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
 let sigma = 10, rho = 28, beta = 2.67;
 let actors = [], activeCount = 1, masterSpeed = 12, camSpeed = 10, trailLimit = 1200;
 
-// FIXED: Initial rotation and pan set to 0 for true center alignment
+// Camera defaults
 let rotationX = 0, rotationY = 0, panX = 0, panY = 0, zoom = 1.0, autoTimer = 0;
-let isAuto = false, isDragging = false, isPanning = false, lastX, lastY;
+let isAuto = false, isDragging = false, lastX, lastY;
 let showSlice = false, vField = false, vBlueMode = false, vHeads = true, poincarePoints = [];
 let divergenceData = [];
 
-const baseColors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600', '#00ffea', '#ff00ff', '#ccff00', '#ff3300'];
+const baseColors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600'];
 const blueShades = ['#00d2ff', '#0078ff', '#3d5afe'];
 let colors = []; for(let i=0; i<5000; i++) colors.push(baseColors[i % baseColors.length]);
 
 function initUI() {
     const grid = document.getElementById('pointGrid');
-    const increments = [1, 2, 5, 10, 20, 40, 100, 500, 1000, 2000, 5000];
-    increments.forEach(val => {
+    [1, 10, 100, 1000].forEach(val => {
         const btn = document.createElement('button');
         btn.className = val === 1 ? 'btn active' : 'btn';
         btn.id = 'p' + val; btn.innerText = val >= 1000 ? (val/1000) + 'K' : val;
         btn.onclick = () => setCount(val);
         grid.appendChild(btn);
     });
-    dcv.width = 220 * dpr; dcv.height = 80 * dpr;
-    const hud = document.getElementById('controls');
-    ['mousedown', 'touchstart', 'mousemove', 'touchmove', 'wheel', 'click'].forEach(evt => {
-        hud.addEventListener(evt, (e) => e.stopPropagation(), { passive: false });
-    });
+    dcv.width = 160 * dpr; dcv.height = 75 * dpr;
 }
 
-function toggleSlice() { showSlice = !showSlice; document.getElementById('b_slice').classList.toggle('active', showSlice); if (!showSlice) poincarePoints = []; }
-function setAuto(v) { isAuto = v; document.getElementById('b_auto').classList.toggle('active', v); document.getElementById('b_man').classList.toggle('active', !v); document.getElementById('camSlider').disabled = !v; document.getElementById('camLabel').style.opacity = v ? "1" : "0.2"; }
+function toggleSlice() { showSlice = !showSlice; if (!showSlice) poincarePoints = []; }
+function setAuto(v) { isAuto = v; }
+function setCount(n) { activeCount = n; document.querySelectorAll('#pointGrid .btn').forEach(b => b.classList.toggle('active', b.id === 'p'+n)); }
 
 function resetPoints() { 
     actors = []; poincarePoints = []; divergenceData = []; 
@@ -96,77 +98,20 @@ function resetPoints() {
     } 
 }
 
-function setCount(n) { 
-    activeCount = n; 
-    document.querySelectorAll('#pointGrid .btn').forEach(btn => btn.classList.toggle('active', btn.id === 'p' + n));
-}
-
 function project(x, y, z, currentZoom) {
     const scale = (Math.min(W, H) * 0.015) * currentZoom;
-    
-    // Centering Logic: Subtracting ~27 from Z centers the attractor's orbit 
     const tz = z - 27; 
-    const tx = x;
-
-    // Simple 3D projection
-    let xR = tx * Math.cos(rotationX) - tz * Math.sin(rotationX);
-    let zR = tx * Math.sin(rotationX) + tz * Math.cos(rotationX);
+    let xR = x * Math.cos(rotationX) - tz * Math.sin(rotationX);
+    let zR = x * Math.sin(rotationX) + tz * Math.cos(rotationX);
     let yR = y * Math.cos(rotationY) - zR * Math.sin(rotationY);
-    
-    // sx: Horizontal center (W/2)
-    // sy: Vertical center (H/2)
-    return { 
-        sx: (W / 2) + (panX * dpr) + (xR * scale), 
-        sy: (H / 2) + (panY * dpr) + (yR * scale) 
-    };
-}
-
-function drawDivergence() {
-    dctx.clearRect(0, 0, dcv.width, dcv.height);
-    if (divergenceData.length < 2) return;
-    dctx.strokeStyle = '#00d2ff'; dctx.lineWidth = 2 * dpr;
-    dctx.beginPath();
-    for (let i = 0; i < divergenceData.length; i++) {
-        let x = (i / 200) * dcv.width, y = dcv.height - (Math.min(divergenceData[i], 50) / 50) * dcv.height;
-        if (i === 0) dctx.moveTo(x, y); else dctx.lineTo(x, y);
-    }
-    dctx.stroke();
+    return { sx: (W/2) + (panX * dpr) + (xR * scale), sy: (H/2) + (panY * dpr) + (yR * scale) };
 }
 
 function draw() {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     let currentZoom = zoom;
-    
-    if (isAuto && !isDragging && !isPanning) {
-        let camFactor = camSpeed * 0.00015; autoTimer += camFactor * 10;
-        rotationX += camFactor * 10; rotationY = 0.4 + Math.sin(autoTimer * 0.5) * 0.3;
-        currentZoom *= (1 + Math.sin(autoTimer) * 0.05);
-    }
-
-    if (vField) {
-        ctx.lineWidth = 1 * dpr;
-        for(let i=-25; i<=25; i+=12.5) {
-            for(let j=-25; j<=25; j+=12.5) {
-                for(let k=2; k<=52; k+=12.5) {
-                    let dx = sigma*(j-i)*0.012, dy = (i*(rho-k)-j)*0.012, dz = (i*j-beta*k)*0.012;
-                    let p1 = project(i,j,k, currentZoom), p2 = project(i+dx*3, j+dy*3, k+dz*3, currentZoom);
-                    let mag = Math.sqrt(dx*dx + dy*dy + dz*dz) * 15;
-                    ctx.strokeStyle = `rgba(0, 255, 255, ${0.03 + Math.min(mag, 0.12)})`;
-                    ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
-                }
-            }
-        }
-    }
-
-    if (showSlice) {
-        ctx.strokeStyle = 'rgba(0, 210, 255, 0.45)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
-        for(let i=-25; i<=25; i+=5) {
-            let p1 = project(-25, i, 27, currentZoom), p2 = project(25, i, 27, currentZoom);
-            ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
-            let p3 = project(i, -25, 27, currentZoom), p4 = project(i, 25, 27, currentZoom);
-            ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
-        }
-        ctx.stroke();
+    if (isAuto && !isDragging) {
+        rotationX += 0.005; rotationY = 0.4 + Math.sin(autoTimer += 0.01) * 0.2;
     }
 
     for (let s = 0; s < masterSpeed; s++) {
@@ -174,49 +119,59 @@ function draw() {
         for (let i = 0; i < activeCount; i++) {
             let a = actors[i];
             let dx = (sigma * (a.y - a.x)) * dt, dy = (a.x * (rho - a.z) - a.y) * dt, dz = (a.x * a.y - beta * a.z) * dt;
-            a.lastX = a.x; a.lastY = a.y; a.lastZ = a.z;
-            a.x += dx; a.y += dy; a.z += dz;
+            a.lastX = a.x; a.lastZ = a.z; a.x += dx; a.y += dy; a.z += dz;
             a.points.push({x: a.x, y: a.y, z: a.z});
-            if (a.points.length > 2000) a.points.shift();
-            if (showSlice && ((a.lastZ <= 27 && a.z >= 27) || (a.lastZ >= 27 && a.z <= 27))) poincarePoints.push({x: a.x, y: a.y, z: 27});
+            if (a.points.length > 1000) a.points.shift();
         }
     }
 
-    drawDivergence();
-
-    poincarePoints.forEach(p => {
-        let proj = project(p.x, p.y, p.z, currentZoom);
-        ctx.fillStyle = '#fff'; ctx.fillRect(proj.sx, proj.sy, 1.5*dpr, 1.5*dpr);
-    });
-
     actors.slice(0, activeCount).forEach(actor => {
-        if (trailLimit > 0 && actor.points.length >= 2) {
-            const startIdx = Math.max(0, actor.points.length - trailLimit);
-            for (let i = startIdx; i < actor.points.length - 1; i++) {
-                let proj1 = project(actor.points[i].x, actor.points[i].y, actor.points[i].z, currentZoom);
-                let proj2 = project(actor.points[i+1].x, actor.points[i+1].y, actor.points[i+1].z, currentZoom);
-                ctx.strokeStyle = (vBlueMode ? actor.blueColor : actor.color);
-                ctx.lineWidth = (0.1 + Math.pow((i - startIdx) / (actor.points.length - startIdx), 2.5) * 0.6) * dpr;
-                ctx.beginPath(); ctx.moveTo(proj1.sx, proj1.sy); ctx.lineTo(proj2.sx, proj2.sy); ctx.stroke();
-            }
+        if (actor.points.length < 2) return;
+        ctx.strokeStyle = vBlueMode ? actor.blueColor : actor.color;
+        ctx.lineWidth = 1 * dpr;
+        ctx.beginPath();
+        let pStart = project(actor.points[0].x, actor.points[0].y, actor.points[0].z, currentZoom);
+        ctx.moveTo(pStart.sx, pStart.sy);
+        for(let i=1; i<actor.points.length; i++) {
+            let p = project(actor.points[i].x, actor.points[i].y, actor.points[i].z, currentZoom);
+            ctx.lineTo(p.sx, p.sy);
         }
-        if (vHeads) {
-            let h = actor.points[actor.points.length-1], hproj = project(h.x, h.y, h.z, currentZoom);
-            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(hproj.sx, hproj.sy, 1.5*dpr, 0, Math.PI*2); ctx.fill();
-        }
+        ctx.stroke();
     });
     requestAnimationFrame(draw);
 }
 
-function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; }
-window.addEventListener('resize', resize);
-window.addEventListener('mousedown', e => { if (e.target.id !== 'canvas') return; lastX = e.clientX; lastY = e.clientY; if (e.button === 2 || e.ctrlKey) isPanning = true; else isDragging = true; });
-window.addEventListener('mousemove', e => { if (!isDragging && !isPanning) return; let dx = (e.clientX - lastX), dy = (e.clientY - lastY); if (isDragging) { rotationX += dx * 0.007; rotationY += dy * 0.007; } else if (isPanning) { panX += dx; panY += dy; } lastX = e.clientX; lastY = e.clientY; });
-window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
-window.addEventListener('touchstart', e => { if (e.target.id !== 'canvas') return; const t = e.touches[0]; lastX = t.clientX; lastY = t.clientY; isDragging = true; }, { passive: false });
-window.addEventListener('touchmove', e => { if (!isDragging) return; const t = e.touches[0]; rotationX += (t.clientX - lastX) * 0.007; rotationY += (t.clientY - lastY) * 0.007; lastX = t.clientX; lastY = t.clientY; e.preventDefault(); }, { passive: false });
+function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; panX=0; panY=0; }
+
+// MOBILE TOUCH HANDLERS
+cv.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    lastX = t.clientX; lastY = t.clientY;
+    isDragging = true;
+}, { passive: false });
+
+cv.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const t = e.touches[0];
+    rotationX += (t.clientX - lastX) * 0.01;
+    rotationY += (t.clientY - lastY) * 0.01;
+    lastX = t.clientX; lastY = t.clientY;
+    e.preventDefault();
+}, { passive: false });
+
 window.addEventListener('touchend', () => isDragging = false);
-window.addEventListener('wheel', e => { if (e.target.id !== 'canvas') return; zoom *= e.deltaY > 0 ? 0.9 : 1.1; e.preventDefault(); }, {passive:false});
+
+// MOUSE HANDLERS
+cv.addEventListener('mousedown', e => { lastX = e.clientX; lastY = e.clientY; isDragging = true; });
+window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    rotationX += (e.clientX - lastX) * 0.007;
+    rotationY += (e.clientY - lastY) * 0.007;
+    lastX = e.clientX; lastY = e.clientY;
+});
+window.addEventListener('mouseup', () => isDragging = false);
+
+window.addEventListener('resize', resize);
 initUI(); resize(); resetPoints(); draw();
 </script>
 </body>
