@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>The Lorenz Flux - Full Capability Build</title>
+    <title>The Lorenz Flux - Full Restoration</title>
     <style>
         body { margin: 0; background: #000; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
         
+        /* Desktop Diagnostic Graph */
         #diagnostic {
             position: absolute; top: 20px; right: 20px; width: 220px; height: 120px;
             background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(0, 210, 255, 0.3);
@@ -15,7 +16,7 @@
         #diagCanvas { width: 100%; height: 80%; border-bottom: 1px solid rgba(255,255,255,0.2); }
         .diagLabel { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #00d2ff; margin-bottom: 5px; display: block; }
 
-        /* Adaptive HUD */
+        /* HUD - Adaptive Layout */
         #controls {
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: rgba(10, 15, 25, 0.95); backdrop-filter: blur(15px);
@@ -24,6 +25,7 @@
             gap: 10px; box-sizing: border-box; z-index: 1001;
         }
 
+        /* Desktop Restoration: Horizontal HUD */
         @media (min-width: 900px) {
             #controls { 
                 bottom: 20px; left: 50%; transform: translateX(-50%); width: 96%; 
@@ -33,6 +35,7 @@
             #mobileNav { display: none !important; }
         }
 
+        /* Mobile D-Pad */
         #mobileNav {
             position: absolute; top: 15px; left: 15px; 
             display: flex; flex-direction: column; gap: 8px; z-index: 1005;
@@ -80,7 +83,7 @@
     <div class="group"><span class="label">Analysis</span><button class="btn" id="b_slice" onclick="toggleSlice()">Tri-Plane Slice</button></div>
     <div class="group"><span class="label">Visuals</span><div style="display:flex; gap:4px;"><button class="btn" id="b_field" onclick="vField=!vField; this.classList.toggle('active')">Field</button><button class="btn" id="b_blue" onclick="vBlueMode=!vBlueMode; this.classList.toggle('active')">Tri-Blue</button></div></div>
     <div class="group"><span class="label">Ensemble</span><div id="pointGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:3px;"></div></div>
-    <div class="group"><span class="label">Restless</span><input type="range" min="1" max="35" value="10" oninput="sigma=+this.value"></div>
+    <div class="group"><span class="label">Restless (sigma)</span><input type="range" min="1" max="35" value="10" oninput="sigma=+this.value"></div>
     <div class="group"><span class="label">Speed</span><input type="range" min="1" max="30" value="12" oninput="masterSpeed=+this.value"></div>
     <div class="group" style="grid-column: span 2;"><button class="btn" onclick="resetPoints()" style="border-color: #00d2ff; color: #00d2ff; font-weight:bold; padding: 10px;">RESET SIMULATION</button></div>
 </div>
@@ -93,7 +96,7 @@ const dcv = document.getElementById('diagCanvas'), dctx = dcv.getContext('2d');
 let W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
 let sigma = 10, rho = 28, beta = 2.67;
 let actors = [], activeCount = 1, masterSpeed = 12;
-let rotationX = 0, rotationY = 0.5, panX = 0, panY = 0, zoom = 1.0;
+let rotationX = 0.8, rotationY = 0.4, panX = 0, panY = 0, zoom = 1.0;
 let isAuto = false, isDragging = false, lastX, lastY, moveInterval, zoomInterval, divergenceData = [];
 let vField = false, vBlueMode = false, showSlice = false, poincarePoints = [];
 
@@ -117,8 +120,17 @@ function initUI() {
     dcv.width = 220 * dpr; dcv.height = 80 * dpr;
 }
 
-function toggleSlice() { showSlice = !showSlice; document.getElementById('b_slice').classList.toggle('active', showSlice); if(!showSlice) poincarePoints = []; }
-function setAuto(v) { isAuto = v; document.getElementById('b_auto').classList.toggle('active', v); document.getElementById('b_man').classList.toggle('active', !v); }
+function toggleSlice() { 
+    showSlice = !showSlice; 
+    document.getElementById('b_slice').classList.toggle('active', showSlice); 
+    if(!showSlice) poincarePoints = []; 
+}
+
+function setAuto(v) { 
+    isAuto = v; 
+    document.getElementById('b_auto').classList.toggle('active', v); 
+    document.getElementById('b_man').classList.toggle('active', !v); 
+}
 
 function resetPoints() { 
     actors = []; poincarePoints = []; divergenceData = [];
@@ -167,22 +179,26 @@ function draw() {
 
     if (showSlice) {
         ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
-        // XY Grid at Z=27
+        // Plane Z=27
         for(let i=-25; i<=25; i+=5) {
             let p1 = project(-25, i, 27), p2 = project(25, i, 27);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
             let p3 = project(i, -25, 27), p4 = project(i, 25, 27);
             ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
         }
-        // XZ Grid at Y=0
+        // Plane Y=0
         for(let i=-25; i<=25; i+=5) {
             let p1 = project(i, 0, 2), p2 = project(i, 0, 52);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
+            let p3 = project(-25, 0, i+27), p4 = project(25, 0, i+27);
+            ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
         }
-        // YZ Grid at X=0
+        // Plane X=0
         for(let i=-25; i<=25; i+=5) {
             let p1 = project(0, i, 2), p2 = project(0, i, 52);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
+            let p3 = project(0, -25, i+27), p4 = project(0, 25, i+27);
+            ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
         }
         ctx.stroke();
     }
