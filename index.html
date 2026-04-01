@@ -161,24 +161,26 @@ function draw() {
 
     if (showSlice) {
         ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
-        for(let i = -30; i <= 30; i += 5) {
-            // XY Plane (Horizontal Mesh)
-            let p1 = project(-30, i, 27), p2 = project(30, i, 27);
-            ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
-            let p3 = project(i, -30, 27), p4 = project(i, 30, 27);
-            ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
+        const min = -30, max = 30, zMin = 2, zMax = 52;
+        
+        for(let i = min; i <= max; i += 5) {
+            // XY Plane (Flat)
+            let pXY1 = project(min, i, 27), pXY2 = project(max, i, 27);
+            ctx.moveTo(pXY1.sx, pXY1.sy); ctx.lineTo(pXY2.sx, pXY2.sy);
+            let pXY3 = project(i, min, 27), pXY4 = project(i, max, 27);
+            ctx.moveTo(pXY3.sx, pXY3.sy); ctx.lineTo(pXY4.sx, pXY4.sy);
 
-            // XZ Plane (Vertical Front Mesh)
-            let xz1 = project(i, 0, 2), xz2 = project(i, 0, 52); // Vertical bars
-            ctx.moveTo(xz1.sx, xz1.sy); ctx.lineTo(xz2.sx, xz2.sy);
-            let xz3 = project(-30, 0, i+27), xz4 = project(30, 0, i+27); // Horizontal bars
-            ctx.moveTo(xz3.sx, xz3.sy); ctx.lineTo(xz4.sx, xz4.sy);
+            // XZ Plane (Frontal)
+            let pXZ1 = project(i, 0, zMin), pXZ2 = project(i, 0, zMax);
+            ctx.moveTo(pXZ1.sx, pXZ1.sy); ctx.lineTo(pXZ2.sx, pXZ2.sy);
+            let pXZ3 = project(min, 0, i+27), pXZ4 = project(max, 0, i+27);
+            ctx.moveTo(pXZ3.sx, pXZ3.sy); ctx.lineTo(pXZ4.sx, pXZ4.sy);
 
-            // YZ Plane (Side Mesh)
-            let yz1 = project(0, i, 2), yz2 = project(0, i, 52); // Vertical bars
-            ctx.moveTo(yz1.sx, yz1.sy); ctx.lineTo(yz2.sx, yz2.sy);
-            let yz3 = project(0, -30, i+27), yz4 = project(0, 30, i+27); // Horizontal bars
-            ctx.moveTo(yz3.sx, yz3.sy); ctx.lineTo(yz4.sx, yz4.sy);
+            // YZ Plane (Side)
+            let pYZ1 = project(0, i, zMin), pYZ2 = project(0, i, zMax);
+            ctx.moveTo(pYZ1.sx, pYZ1.sy); ctx.lineTo(pYZ2.sx, pYZ2.sy);
+            let pYZ3 = project(0, min, i+27), pYZ4 = project(0, max, i+27);
+            ctx.moveTo(pYZ3.sx, pYZ3.sy); ctx.lineTo(pYZ4.sx, pYZ4.sy);
         }
         ctx.stroke();
     }
@@ -238,7 +240,7 @@ function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = wind
 cv.addEventListener('mousedown', e => { if (e.button === 2) isPanning = true; else isDragging = true; });
 window.addEventListener('mousemove', e => {
     if (isDragging) { rotationX += e.movementX * 0.007; rotationY += e.movementY * 0.007; }
-    if (isPanning) { panX += e.movementX * 0.8; panY += e.movementY * 0.8; }
+    if (isPanning) { panX += (e.movementX * 1.5) / dpr; panY += (e.movementY * 1.5) / dpr; }
 });
 window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
 window.addEventListener('wheel', e => { zoom *= e.deltaY > 0 ? 0.9 : 1.1; e.preventDefault(); }, {passive:false});
