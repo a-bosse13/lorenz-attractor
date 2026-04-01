@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>The Lorenz Flux - Pro Desktop Build</title>
+    <title>The Lorenz Flux - stable_v9_final</title>
     <style>
         body { margin: 0; background: #000; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
         
@@ -49,7 +49,6 @@
         input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
         input[type=range]::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.3); }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #00d2ff; margin-top: -7px; }
-        input[type=range]:disabled { opacity: 0.2; }
 
         .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; text-align: center; }
         .btn.active { background: #00d2ff; color: #000; border-color: #00d2ff; box-shadow: 0 0 15px rgba(0,210,255,0.4); }
@@ -82,8 +81,7 @@
     <div class="group"><span class="label">Ensemble</span><div id="pointGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:3px;"></div></div>
     <div class="group"><span class="label">Restless</span><input type="range" min="1" max="35" value="10" oninput="sigma=+this.value"></div>
     <div class="group"><span class="label">Speed</span><input type="range" min="1" max="30" value="12" oninput="masterSpeed=+this.value"></div>
-    <div class="group"><span class="label">Trails</span><input type="range" min="0" max="2000" value="1200" oninput="trailLimit=+this.value"></div>
-    <div class="group"><span class="label" id="camLabel" style="opacity:0.2;">Camera</span><input type="range" min="1" max="20" value="10" id="camSlider" oninput="camSpeed=+this.value" disabled></div>
+    <div class="group"><span class="label" id="camLabel" style="opacity:0.2;">Cam Speed</span><input type="range" min="1" max="20" value="10" id="camSlider" oninput="camSpeed=+this.value" disabled></div>
     <div class="group"><button class="btn" onclick="resetPoints()" style="border-color: #00d2ff; color: #00d2ff; font-weight:bold;">RESET</button></div>
 </div>
 
@@ -94,15 +92,13 @@ const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
 const dcv = document.getElementById('diagCanvas'), dctx = dcv.getContext('2d');
 let W, H, dpr = Math.min(window.devicePixelRatio || 1, 2);
 let sigma = 10, rho = 28, beta = 2.67;
-let actors = [], activeCount = 1, masterSpeed = 12, camSpeed = 10, trailLimit = 1200;
+let actors = [], activeCount = 1, masterSpeed = 12, camSpeed = 10;
 let rotationX = 0.8, rotationY = 0.4, panX = 0, panY = 0, zoom = 1.0, autoTimer = 0;
 let isAuto = false, isDragging = false, isPanning = false, lastX, lastY, moveInterval, zoomInterval;
-let showSlice = false, vField = false, vBlueMode = false, vHeads = true, poincarePoints = [];
-let divergenceData = [];
+let vField = false, vBlueMode = false, vHeads = true, showSlice = false, poincarePoints = [], divergenceData = [];
 
-const baseColors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600', '#00ffea', '#ff00ff', '#ccff00', '#ff3300'];
+const colors = ['#00d2ff', '#ff007a', '#00ffaa', '#ffcc00', '#9966ff', '#ff6600'];
 const blueShades = ['#00d2ff', '#0078ff', '#3d5afe'];
-let colors = []; for(let i=0; i<5000; i++) colors.push(baseColors[i % baseColors.length]);
 
 function startMove(x, y) { moveInterval = setInterval(() => { panX += x; panY += y; }, 16); }
 function stopMove() { clearInterval(moveInterval); }
@@ -111,18 +107,17 @@ function stopZoom() { clearInterval(zoomInterval); }
 
 function initUI() {
     const grid = document.getElementById('pointGrid');
-    const increments = [1, 10, 100, 1000, 2500, 5000];
-    increments.forEach(val => {
+    [1, 10, 100, 1000, 2500, 5000].forEach(val => {
         const btn = document.createElement('button');
         btn.className = val === 1 ? 'btn active' : 'btn';
         btn.id = 'p' + val; btn.innerText = val >= 1000 ? (val/1000) + 'K' : val;
-        btn.onclick = () => setCount(val);
+        btn.onclick = () => { activeCount = val; document.querySelectorAll('#pointGrid .btn').forEach(b => b.classList.toggle('active', b.id === 'p'+val)); };
         grid.appendChild(btn);
     });
     dcv.width = 220 * dpr; dcv.height = 80 * dpr;
 }
 
-function toggleSlice() { showSlice = !showSlice; document.getElementById('b_slice').classList.toggle('active', showSlice); if (!showSlice) poincarePoints = []; }
+function toggleSlice() { showSlice = !showSlice; document.getElementById('b_slice').classList.toggle('active', showSlice); if(!showSlice) poincarePoints = []; }
 function setAuto(v) { 
     isAuto = v; 
     document.getElementById('b_auto').classList.toggle('active', v); 
@@ -132,24 +127,20 @@ function setAuto(v) {
 }
 
 function resetPoints() { 
-    actors = []; poincarePoints = []; divergenceData = []; 
+    actors = []; poincarePoints = []; divergenceData = [];
     for(let i = 0; i < 5000; i++) { 
-        actors.push({ x: 0.1 + (i * 0.0001), y: 0, z: 0, lastX: 0.1, lastY: 0, lastZ: 0, points: [], color: colors[i], blueColor: blueShades[i % 3] }); 
+        actors.push({ x: 0.1 + (i * 0.0001), y: 0, z: 0, lastX: 0, lastY: 0, lastZ: 0, points: [], color: colors[i % 6], blue: blueShades[i % 3] }); 
     } 
 }
 
-function setCount(n) { 
-    activeCount = n; 
-    document.querySelectorAll('#pointGrid .btn').forEach(btn => btn.classList.toggle('active', btn.id === 'p' + n));
-}
-
-function project(x, y, z, currentZoom) {
-    const scale = (Math.min(W, H) * 0.015) * currentZoom;
-    const tz = z - 27;
+function project(x, y, z) {
+    const scale = (Math.min(W, H) * 0.015) * zoom;
+    const tz = z - 27; 
     let xR = x * Math.cos(rotationX) - tz * Math.sin(rotationX);
     let zR = x * Math.sin(rotationX) + tz * Math.cos(rotationX);
     let yR = y * Math.cos(rotationY) - zR * Math.sin(rotationY);
-    return { sx: (W/2 + panX * dpr) + xR * scale, sy: (H/2 + panY * dpr) + yR * scale };
+    // Panning logic fixed for desktop right-click
+    return { sx: (W/2) + (panX * dpr) + (xR * scale), sy: (H/2) + (panY * dpr) + (yR * scale) };
 }
 
 function drawDivergence() {
@@ -165,11 +156,10 @@ function drawDivergence() {
 
 function draw() {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    let currentZoom = zoom;
-    if (isAuto && !isDragging && !isPanning) {
-        let camFactor = camSpeed * 0.00015; autoTimer += camFactor * 10;
-        rotationX += camFactor * 10; rotationY = 0.4 + Math.sin(autoTimer * 0.5) * 0.3;
-        currentZoom *= (1 + Math.sin(autoTimer) * 0.05);
+    if (isAuto && !isDragging && !isPanning) { 
+        let camStep = camSpeed * 0.005;
+        rotationX += camStep; 
+        rotationY = 0.5 + Math.sin(autoTimer += (camStep * 0.1)) * 0.2;
     }
 
     if (vField) {
@@ -178,7 +168,7 @@ function draw() {
             for(let j=-25; j<=25; j+=12.5) {
                 for(let k=2; k<=52; k+=12.5) {
                     let dx = sigma*(j-i)*0.012, dy = (i*(rho-k)-j)*0.012, dz = (i*j-beta*k)*0.012;
-                    let p1 = project(i,j,k, currentZoom), p2 = project(i+dx*3, j+dy*3, k+dz*3, currentZoom);
+                    let p1 = project(i,j,k), p2 = project(i+dx*3, j+dy*3, k+dz*3);
                     ctx.strokeStyle = 'rgba(0, 255, 255, 0.08)';
                     ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
                 }
@@ -187,16 +177,23 @@ function draw() {
     }
 
     if (showSlice) {
-        ctx.strokeStyle = 'rgba(0, 210, 255, 0.45)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
+        ctx.strokeStyle = 'rgba(0, 210, 255, 0.3)'; ctx.lineWidth = 1.0 * dpr; ctx.beginPath();
+        // Fixed Slice Grids
         for(let i=-25; i<=25; i+=5) {
-            let p1 = project(-25, i, 27, currentZoom), p2 = project(25, i, 27, currentZoom);
+            let p1 = project(-25, i, 27), p2 = project(25, i, 27);
             ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
-            let p3 = project(i, -25, 27, currentZoom), p4 = project(i, 25, 27, currentZoom);
+            let p3 = project(i, -25, 27), p4 = project(i, 25, 27);
             ctx.moveTo(p3.sx, p3.sy); ctx.lineTo(p4.sx, p4.sy);
-            let pXZ1 = project(i, 0, 2, currentZoom), pXZ2 = project(i, 0, 52, currentZoom);
+            
+            let pXZ1 = project(i, 0, 2), pXZ2 = project(i, 0, 52);
             ctx.moveTo(pXZ1.sx, pXZ1.sy); ctx.lineTo(pXZ2.sx, pXZ2.sy);
-            let pYZ1 = project(0, i, 2, currentZoom), pYZ2 = project(0, i, 52, currentZoom);
+            let pXZ3 = project(-25, 0, i+27), pXZ4 = project(25, 0, i+27);
+            ctx.moveTo(pXZ3.sx, pXZ3.sy); ctx.lineTo(pXZ4.sx, pXZ4.sy);
+            
+            let pYZ1 = project(0, i, 2), pYZ2 = project(0, i, 52);
             ctx.moveTo(pYZ1.sx, pYZ1.sy); ctx.lineTo(pYZ2.sx, pYZ2.sy);
+            let pYZ3 = project(0, -25, i+27), pYZ4 = project(0, 25, i+27);
+            ctx.moveTo(pYZ3.sx, pYZ3.sy); ctx.lineTo(pYZ4.sx, pYZ4.sy);
         }
         ctx.stroke();
     }
@@ -211,6 +208,7 @@ function draw() {
             a.x += dx; a.y += dy; a.z += dz;
             a.points.push({x: a.x, y: a.y, z: a.z});
             if (a.points.length > 800) a.points.shift();
+            
             if (showSlice) {
                 if ((a.lastZ <= 27 && a.z >= 27) || (a.lastZ >= 27 && a.z <= 27)) poincarePoints.push({x: a.x, y: a.y, z: 27});
                 if ((a.lastX <= 0 && a.x >= 0) || (a.lastX >= 0 && a.x <= 0)) poincarePoints.push({x: 0, y: a.y, z: a.z});
@@ -219,32 +217,32 @@ function draw() {
         }
         if (activeCount > 1) {
             let sumDist = 0;
-            for(let i=1; i<activeCount; i++) sumDist += Math.sqrt(Math.pow(actors[i].x-actors[0].x,2) + Math.pow(actors[i].y-actors[0].y,2) + Math.pow(actors[i].z-actors[0].z,2));
-            currentDiv = sumDist / (activeCount - 1);
+            for(let i=1; i<activeCount; i++) sumDist += Math.sqrt(Math.pow(actors[i].x-actors[0].x,2) + Math.pow(actors[i].y-actors[0].y,2));
+            currentDiv = sumDist / activeCount;
         }
     }
     divergenceData.push(currentDiv); if (divergenceData.length > 200) divergenceData.shift();
     drawDivergence();
 
     poincarePoints.forEach(p => {
-        let proj = project(p.x, p.y, p.z, currentZoom);
-        ctx.fillStyle = '#fff'; ctx.fillRect(proj.sx, proj.sy, 1.5*dpr, 1.5*dpr);
+        let proj = project(p.x, p.y, p.z);
+        ctx.fillStyle = '#fff'; ctx.fillRect(proj.sx, proj.sy, 1.2*dpr, 1.2*dpr);
     });
     if (poincarePoints.length > 5000) poincarePoints.shift();
 
     actors.slice(0, activeCount).forEach(actor => {
         if (actor.points.length < 2) return;
-        ctx.strokeStyle = vBlueMode ? actor.blueColor : actor.color;
+        ctx.strokeStyle = vBlueMode ? actor.blue : actor.color;
         ctx.lineWidth = 1.2 * dpr; ctx.beginPath();
-        let pStart = project(actor.points[0].x, actor.points[0].y, actor.points[0].z, currentZoom);
+        let pStart = project(actor.points[0].x, actor.points[0].y, actor.points[0].z);
         ctx.moveTo(pStart.sx, pStart.sy);
         for(let i=1; i<actor.points.length; i+=2) {
-            let p = project(actor.points[i].x, actor.points[i].y, actor.points[i].z, currentZoom);
+            let p = project(actor.points[i].x, actor.points[i].y, actor.points[i].z);
             ctx.lineTo(p.sx, p.sy);
         }
         ctx.stroke();
         if (vHeads) {
-            let h = actor.points[actor.points.length-1], hp = project(h.x, h.y, h.z, currentZoom);
+            let h = actor.points[actor.points.length-1], hp = project(h.x, h.y, h.z);
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(hp.sx, hp.sy, 1.5*dpr, 0, Math.PI*2); ctx.fill();
         }
     });
@@ -253,13 +251,12 @@ function draw() {
 
 function resize() { W = cv.width = window.innerWidth * dpr; H = cv.height = window.innerHeight * dpr; }
 
-// NEW: Professional Desktop Interactions
+// Desktop Nav Fixed
 cv.addEventListener('mousedown', e => {
     lastX = e.clientX; lastY = e.clientY;
     if (e.button === 2) { isPanning = true; isDragging = false; } 
     else { isDragging = true; isPanning = false; }
 });
-
 window.addEventListener('mousemove', e => {
     if (!isDragging && !isPanning) return;
     let dx = e.clientX - lastX, dy = e.clientY - lastY;
@@ -267,14 +264,9 @@ window.addEventListener('mousemove', e => {
     else if (isPanning) { panX += dx; panY += dy; }
     lastX = e.clientX; lastY = e.clientY;
 });
-
 window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
-
-// NEW: Double-Click Reset
-cv.addEventListener('dblclick', () => { panX = 0; panY = 0; zoom = 1.0; rotationX = 0.8; rotationY = 0.4; });
-
-// Wheel Zoom
 window.addEventListener('wheel', e => { zoom *= e.deltaY > 0 ? 0.9 : 1.1; e.preventDefault(); }, {passive:false});
+cv.addEventListener('contextmenu', e => e.preventDefault());
 
 // Mobile Touch
 cv.addEventListener('touchstart', e => { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; isDragging = true; }, { passive: false });
@@ -282,8 +274,6 @@ cv.addEventListener('touchmove', e => { if (!isDragging) return; rotationX += (e
 window.addEventListener('touchend', () => isDragging = false);
 
 window.addEventListener('resize', resize);
-cv.addEventListener('contextmenu', e => e.preventDefault()); // Disable context menu for right-click pan
-
 initUI(); resize(); resetPoints(); draw();
 </script>
 </body>
